@@ -115,11 +115,9 @@ const getBookingsForProperty = async (propertyId: string) => {
 // For Next.js 15, the proper way to handle dynamic params in route handlers
 export async function GET(
   request: Request,
-  context: { params: { propertyId: string } }
+  { params }: { params: { propertyId: string } }
 ) {
   try {
-    // Properly awaiting params in Next.js 15
-    const params = await Promise.resolve(context.params);
     const propertyId = params.propertyId;
     
     console.log('API received property ID for bookings:', propertyId);
