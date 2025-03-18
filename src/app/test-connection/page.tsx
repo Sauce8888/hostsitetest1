@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { stripe } from "@/lib/stripe";
 
 export default function TestConnectionPage() {
   const [supabaseStatus, setSupabaseStatus] = useState<"loading" | "success" | "error">("loading");
@@ -19,11 +18,12 @@ export default function TestConnectionPage() {
         throw error;
       }
       
+      console.log("Supabase connection successful, record count:", data);
       setSupabaseStatus("success");
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Supabase connection error:", error);
       setSupabaseStatus("error");
-      setSupabaseError(error.message || "Unknown error connecting to Supabase");
+      setSupabaseError(error instanceof Error ? error.message : "Unknown error connecting to Supabase");
     }
   };
 
@@ -34,17 +34,18 @@ export default function TestConnectionPage() {
         method: "POST",
       });
       
-      const data = await response.json();
+      const responseData = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || "Error connecting to Stripe");
+        throw new Error(responseData.error || "Error connecting to Stripe");
       }
       
+      console.log("Stripe connection successful:", responseData);
       setStripeStatus("success");
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Stripe connection error:", error);
       setStripeStatus("error");
-      setStripeError(error.message || "Unknown error connecting to Stripe");
+      setStripeError(error instanceof Error ? error.message : "Unknown error connecting to Stripe");
     }
   };
 

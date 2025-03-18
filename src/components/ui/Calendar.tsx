@@ -8,8 +8,6 @@ type CalendarProps = {
   selectedDate: Date | null;
   minDate?: Date;
   maxDate?: Date;
-  singleSelect?: boolean;
-  property_id?: string;
 };
 
 type DateInfo = {
@@ -23,12 +21,9 @@ const Calendar = ({
   selectedDate,
   minDate = new Date(),
   maxDate,
-  singleSelect = false,
-  property_id
 }: CalendarProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [calendarDays, setCalendarDays] = useState<DateInfo[]>([]);
-  const [loading, setLoading] = useState(false);
 
   // Generate calendar days whenever month changes
   useEffect(() => {

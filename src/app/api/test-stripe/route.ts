@@ -14,13 +14,13 @@ export async function POST() {
         currency: item.currency
       }))
     });
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error("Stripe connection test failed:", error);
     
     return NextResponse.json(
       { 
         success: false, 
-        error: error.message || "Failed to connect to Stripe" 
+        error: error instanceof Error ? error.message : "Failed to connect to Stripe" 
       },
       { status: 500 }
     );

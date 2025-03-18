@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { stripe, constructWebhookEvent } from '@/lib/stripe';
+import { constructWebhookEvent } from '@/lib/stripe';
 import { supabase } from '@/lib/supabase';
 import { headers } from 'next/headers';
 import { v4 as uuidv4 } from 'uuid';
@@ -20,10 +20,10 @@ export async function POST(request: Request) {
 
   try {
     event = constructWebhookEvent(body, signature);
-  } catch (error: any) {
-    console.error(`Webhook Error: ${error.message}`);
+  } catch (error: Error | unknown) {
+    console.error(`Webhook Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     return NextResponse.json(
-      { error: `Webhook Error: ${error.message}` },
+      { error: `Webhook Error: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 400 }
     );
   }

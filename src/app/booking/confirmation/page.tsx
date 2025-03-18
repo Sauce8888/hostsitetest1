@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Calendar, CheckCircle, Clock, Download, MapPin, Users } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 // Define the booking type
 type BookingDetails = {
@@ -44,7 +43,6 @@ const defaultBookingDetails: BookingDetails = {
 };
 
 export default function BookingConfirmation() {
-  const router = useRouter();
   const [bookingDetails, setBookingDetails] = useState<BookingDetails>(defaultBookingDetails);
   const [isLoading, setIsLoading] = useState(true);
 
