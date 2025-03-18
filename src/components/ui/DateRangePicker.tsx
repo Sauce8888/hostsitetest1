@@ -90,6 +90,57 @@ export default function DateRangePicker({
     };
   }, [property_id, lastFetchTime]);
 
+  // Function to generate calendar days
+  const generateCalendarDays = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    
+    // First day of the month
+    const firstDayOfMonth = new Date(year, month, 1);
+    // Last day of the month
+    const lastDayOfMonth = new Date(year, month + 1, 0);
+    
+    // Day of the week for the first day (0 is Sunday, 1 is Monday, etc.)
+    const firstDayWeekday = firstDayOfMonth.getDay();
+    
+    // Generate array of all days to display in the calendar
+    const days: DateInfo[] = [];
+    
+    // Add days from previous month to fill the first week
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    for (let i = firstDayWeekday - 1; i >= 0; i--) {
+      const date = new Date(year, month - 1, prevMonthLastDay - i);
+      days.push({
+        date,
+        isCurrentMonth: false,
+        isAvailable: isDateAvailable(date)
+      });
+    }
+    
+    // Add days of current month
+    for (let day = 1; day <= lastDayOfMonth.getDate(); day++) {
+      const date = new Date(year, month, day);
+      days.push({
+        date,
+        isCurrentMonth: true,
+        isAvailable: isDateAvailable(date)
+      });
+    }
+    
+    // Fill remaining slots with days from next month
+    const remainingSlots = 42 - days.length; // 6 rows of 7 days
+    for (let day = 1; day <= remainingSlots; day++) {
+      const date = new Date(year, month + 1, day);
+      days.push({
+        date,
+        isCurrentMonth: false,
+        isAvailable: isDateAvailable(date)
+      });
+    }
+    
+    setCalendarDays(days);
+  };
+
   // Generate calendar days whenever month, unavailable dates, or bookings change
   useEffect(() => {
     console.log('Regenerating calendar days...');
@@ -245,7 +296,7 @@ export default function DateRangePicker({
         try {
           checkInDate = new Date(booking.check_in);
           if (isNaN(checkInDate.getTime())) throw new Error('Invalid check-in date');
-        } catch (err) {
+        } catch {
           console.error('Invalid check_in date format:', booking.check_in);
           continue; // Skip this booking
         }
@@ -253,7 +304,7 @@ export default function DateRangePicker({
         try {
           checkOutDate = new Date(booking.check_out);
           if (isNaN(checkOutDate.getTime())) throw new Error('Invalid check-out date');
-        } catch (err) {
+        } catch {
           console.error('Invalid check_out date format:', booking.check_out);
           continue; // Skip this booking
         }
@@ -279,56 +330,6 @@ export default function DateRangePicker({
     }
     
     return false;
-  };
-
-  const generateCalendarDays = () => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    
-    // First day of the month
-    const firstDayOfMonth = new Date(year, month, 1);
-    // Last day of the month
-    const lastDayOfMonth = new Date(year, month + 1, 0);
-    
-    // Day of the week for the first day (0 is Sunday, 1 is Monday, etc.)
-    const firstDayWeekday = firstDayOfMonth.getDay();
-    
-    // Generate array of all days to display in the calendar
-    const days: DateInfo[] = [];
-    
-    // Add days from previous month to fill the first week
-    const prevMonthLastDay = new Date(year, month, 0).getDate();
-    for (let i = firstDayWeekday - 1; i >= 0; i--) {
-      const date = new Date(year, month - 1, prevMonthLastDay - i);
-      days.push({
-        date,
-        isCurrentMonth: false,
-        isAvailable: isDateAvailable(date)
-      });
-    }
-    
-    // Add days of current month
-    for (let day = 1; day <= lastDayOfMonth.getDate(); day++) {
-      const date = new Date(year, month, day);
-      days.push({
-        date,
-        isCurrentMonth: true,
-        isAvailable: isDateAvailable(date)
-      });
-    }
-    
-    // Fill remaining slots with days from next month
-    const remainingSlots = 42 - days.length; // 6 rows of 7 days
-    for (let day = 1; day <= remainingSlots; day++) {
-      const date = new Date(year, month + 1, day);
-      days.push({
-        date,
-        isCurrentMonth: false,
-        isAvailable: isDateAvailable(date)
-      });
-    }
-    
-    setCalendarDays(days);
   };
 
   // Check if date is available based on min/max dates, unavailable dates, and bookings
@@ -479,7 +480,7 @@ export default function DateRangePicker({
         if (dateTime >= checkInDate.getTime() && dateTime < checkOutDate.getTime()) {
           return true;
         }
-      } catch (err) {
+      } catch {
         // Skip problematic bookings
       }
     }

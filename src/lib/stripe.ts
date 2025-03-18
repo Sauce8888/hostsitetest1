@@ -59,7 +59,7 @@ export const constructWebhookEvent = (payload: string, signature: string) => {
       signature,
       process.env.STRIPE_WEBHOOK_SECRET
     );
-  } catch (error: any) {
-    throw new Error(`Webhook Error: ${error.message}`);
+  } catch (error: Error | unknown) {
+    throw new Error(`Webhook Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
