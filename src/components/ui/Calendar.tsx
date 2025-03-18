@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 type CalendarProps = {
@@ -24,6 +24,28 @@ const Calendar = ({
 }: CalendarProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [calendarDays, setCalendarDays] = useState<DateInfo[]>([]);
+
+  // Memoize isDateAvailable function with useCallback
+  const isDateAvailable = useCallback((date: Date): boolean => {
+    // Check against min and max dates without modifying them
+    if (minDate) {
+      const minDateCopy = new Date(minDate);
+      minDateCopy.setHours(0, 0, 0, 0);
+      if (date < minDateCopy) {
+        return false;
+      }
+    }
+    
+    if (maxDate) {
+      const maxDateCopy = new Date(maxDate);
+      maxDateCopy.setHours(23, 59, 59, 999);
+      if (date > maxDateCopy) {
+        return false;
+      }
+    }
+    
+    return true;
+  }, [minDate, maxDate]);
 
   // Generate calendar days whenever month changes
   useEffect(() => {
@@ -78,29 +100,7 @@ const Calendar = ({
     };
 
     generateCalendarDays();
-  }, [currentMonth, minDate, maxDate]);
-
-  // Simplified isDateAvailable function - only check min/max dates
-  const isDateAvailable = (date: Date): boolean => {
-    // Check against min and max dates without modifying them
-    if (minDate) {
-      const minDateCopy = new Date(minDate);
-      minDateCopy.setHours(0, 0, 0, 0);
-      if (date < minDateCopy) {
-        return false;
-      }
-    }
-    
-    if (maxDate) {
-      const maxDateCopy = new Date(maxDate);
-      maxDateCopy.setHours(23, 59, 59, 999);
-      if (date > maxDateCopy) {
-        return false;
-      }
-    }
-    
-    return true;
-  };
+  }, [currentMonth, isDateAvailable]);
 
   // Navigate to previous month
   const handlePrevMonth = () => {
