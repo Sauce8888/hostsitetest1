@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { stripe, constructWebhookEvent } from '@/lib/stripe';
 import { supabase } from '@/lib/supabase';
 import { headers } from 'next/headers';
+import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: Request) {
   const body = await request.text();
@@ -37,10 +38,12 @@ export async function POST(request: Request) {
       
       if (bookingId) {
         // Update the booking status to completed
-        const { error } = await supabase
+        const { data: booking, error } = await supabase
           .from('bookings')
           .update({ status: 'completed' })
-          .eq('id', bookingId);
+          .eq('id', bookingId)
+          .select('*')
+          .single();
           
         if (error) {
           console.error('Error updating booking status:', error);
@@ -50,10 +53,40 @@ export async function POST(request: Request) {
           );
         }
         
-        // Here you could also:
-        // 1. Send confirmation email to customer
-        // 2. Notify property owner of new booking
-        // 3. Update availability calendar
+        // Update availability calendar by adding days to the unavailable_dates table
+        if (booking) {
+          try {
+            const checkIn = new Date(booking.check_in);
+            const checkOut = new Date(booking.check_out);
+            const propertyId = booking.property_id;
+            const eventId = uuidv4(); // Same event ID for the entire booking period
+            
+            // Generate dates between check-in and check-out (inclusive)
+            const unavailableDates = getDatesInRange(checkIn, checkOut).map(date => ({
+              id: uuidv4(),
+              property_id: propertyId,
+              date: date.toISOString().split('T')[0], // Format as YYYY-MM-DD
+              reason: "Booked",
+              event_id: eventId
+            }));
+            
+            // Add all dates to the unavailable_dates table
+            const { error: insertError } = await supabase
+              .from('unavailable_dates')
+              .insert(unavailableDates);
+              
+            if (insertError) {
+              console.error('Error adding unavailable dates:', insertError);
+            } else {
+              console.log(`Added ${unavailableDates.length} unavailable dates for booking ${bookingId}`);
+            }
+          } catch (err) {
+            console.error('Error processing unavailable dates:', err);
+          }
+        }
+        
+        // Send confirmation email to customer
+        // TODO: Implement email notification
       }
       break;
     }
@@ -86,4 +119,23 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ received: true });
+}
+
+// Helper function to get all dates between start and end dates (inclusive)
+function getDatesInRange(startDate: Date, endDate: Date): Date[] {
+  const dates = [];
+  const currentDate = new Date(startDate);
+  
+  // Remove time components to ensure we're working with full days
+  currentDate.setHours(0, 0, 0, 0);
+  
+  const lastDate = new Date(endDate);
+  lastDate.setHours(0, 0, 0, 0);
+  
+  while (currentDate <= lastDate) {
+    dates.push(new Date(currentDate));
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return dates;
 } 

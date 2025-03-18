@@ -65,14 +65,37 @@ A simple and elegant booking system for hosts to accept reservations and payment
 
 ## Deployment
 
-1. Deploy to Vercel:
-   ```bash
-   npm run build
-   ```
+### Deploying to Vercel
 
-2. Configure environment variables in your hosting provider
+1. Push your code to a GitHub repository
 
-3. Set up the Stripe webhook for your production URL
+2. Connect your repository to Vercel:
+   - Sign in to [Vercel](https://vercel.com)
+   - Click "New Project"
+   - Import your GitHub repository
+   - Select the Next.js framework preset
+
+3. Configure environment variables:
+   - Add all variables from your `.env` file to the Vercel project settings
+   - Make sure to update `NEXT_PUBLIC_APP_URL` to your production URL
+
+4. Deploy:
+   - Click "Deploy"
+   - Vercel will automatically build and deploy your application
+
+5. Set up the Stripe webhook for your production URL:
+   - Go to the Stripe dashboard
+   - Navigate to Developers > Webhooks
+   - Add a new webhook endpoint: `https://your-vercel-domain.com/api/webhook`
+   - Select the events to listen for (typically `checkout.session.completed`)
+   - Update the `STRIPE_WEBHOOK_SECRET` in your Vercel environment variables
+
+### Post-Deployment Checks
+
+- Verify that authentication with Supabase works correctly
+- Test the booking process and payment flow
+- Confirm that emails are being sent properly
+- Check that the calendar is displaying availability correctly
 
 ## Project Structure
 

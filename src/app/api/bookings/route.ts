@@ -27,26 +27,63 @@ export async function POST(request: Request) {
       }
     }
 
-    // Check availability for the dates with a simplified query approach
-    const { data: existingBookings, error: availabilityError } = await supabase
+    // Get the property ID from the request or use a default if not provided
+    const propertyId = data.propertyId || '123e4567-e89b-12d3-a456-426614174000';
+    
+    // First check if any of the dates are explicitly marked as unavailable
+    // This matches the DateRangePicker's first availability check
+    const { data: unavailableDates, error: unavailableError } = await supabase
+      .from('unavailable_dates')
+      .select('date')
+      .eq('property_id', propertyId)
+      .gte('date', data.checkIn)
+      .lt('date', data.checkOut);
+      
+    if (unavailableError) {
+      console.error("Unavailable dates check error:", unavailableError);
+      return NextResponse.json(
+        { error: "Failed to check date availability" },
+        { status: 500 }
+      );
+    }
+    
+    // If we found any dates in the unavailable_dates table, reject the booking
+    if (unavailableDates && unavailableDates.length > 0) {
+      console.log("Found unavailable dates:", unavailableDates);
+      return NextResponse.json(
+        { error: "Selected dates are not available", unavailableDates },
+        { status: 400 }
+      );
+    }
+    
+    // Then check for overlapping bookings - consider ALL statuses except 'cancelled'
+    // This matches the DateRangePicker's booking availability check
+    const { data: existingBookings, error: bookingsError } = await supabase
       .from('bookings')
       .select('*')
-      .eq('status', 'completed')
-      .lte('check_in', data.checkOut)
-      .gte('check_out', data.checkIn);
+      .eq('property_id', propertyId)
+      .not('status', 'eq', 'cancelled')
+      .or(`check_in.lte.${data.checkOut},check_out.gt.${data.checkIn}`);
 
-    if (availabilityError) {
-      console.error("Availability check error:", availabilityError);
+    if (bookingsError) {
+      console.error("Booking availability check error:", bookingsError);
       return NextResponse.json(
-        { error: "Failed to check availability" },
+        { error: "Failed to check booking availability" },
         { status: 500 }
       );
     }
 
-    // If the function returns any results, the dates are not available
+    // If the function returns any results, the dates overlap with existing bookings
     if (existingBookings && existingBookings.length > 0) {
+      console.log("Found overlapping bookings:", existingBookings.map(b => ({
+        id: b.id,
+        status: b.status,
+        checkIn: b.check_in,
+        checkOut: b.check_out
+      })));
+      
       return NextResponse.json(
-        { error: "Selected dates are not available" },
+        { error: "Selected dates are not available", conflictingBookings: existingBookings.length },
         { status: 400 }
       );
     }
@@ -67,7 +104,7 @@ export async function POST(request: Request) {
         special_requests: data.specialRequests || '',
         status: 'pending',
         payment_id: '',
-        property_id: data.propertyId || null
+        property_id: propertyId
       })
       .select()
       .single();

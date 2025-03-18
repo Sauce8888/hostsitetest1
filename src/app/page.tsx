@@ -3,37 +3,106 @@
 import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Star, Users } from "lucide-react";
-import { useState } from "react";
-import DateRangePicker from "@/components/ui/DateRangePicker";
+import { useState, useEffect } from "react";
+import DateRangePicker from "../components/ui/DateRangePicker";
+import { supabase } from "@/lib/supabase";
+
+// Custom property type to match what we receive from the database
+type Property = {
+  id: string;
+  name: string;
+  description: string;
+  location: string;
+  rating: number;
+  reviews: number;
+  price: number;
+  guests: number;
+  bedrooms: number;
+  bathrooms: number;
+  images: string[];
+  amenities: string[];
+};
 
 export default function Home() {
-  // This would typically come from a database or API
-  const property = {
-    id: "c78b2719-486b-4c77-bf8f-beadf7dc5d02",  // Replace with a real property ID from your database
-    name: "Mountain View Retreat",
-    description: "Enjoy this stunning 3-bedroom cabin with breathtaking mountain views, a hot tub, and easy access to hiking trails.",
-    location: "Blue Ridge Mountains, NC",
-    rating: 4.9,
-    reviews: 187,
-    price: 189,
-    guests: 6,
-    bedrooms: 3,
-    bathrooms: 2,
-    images: [
-      "/cabin-main.jpg",  // These would need to be actual images in your public folder
-      "/cabin-interior.jpg",
-      "/cabin-view.jpg",
-    ],
-    amenities: [
-      "Hot Tub", "Wifi", "Kitchen", "Free Parking", 
-      "Washer & Dryer", "Air Conditioning", "Fireplace", "BBQ Grill"
-    ]
-  };
+  // Hardcoded host ID - use your actual host ID from the database
+  const hostId = "c78b2719-486b-4c77-bf8f-beadf7dc5d02";
+  
+  // State for property data
+  const [property, setProperty] = useState<Property>({
+    id: "",
+    name: "Loading...",
+    description: "Loading property details...",
+    location: "Loading...",
+    rating: 0,
+    reviews: 0,
+    price: 0,
+    guests: 2,
+    bedrooms: 0,
+    bathrooms: 0,
+    images: [],
+    amenities: []
+  });
+  
+  // State for loading status
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // State for booking details
   const [checkInDate, setCheckInDate] = useState<Date | null>(null);
   const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
   const [guestCount, setGuestCount] = useState(2);
+
+  // Fetch property data from Supabase
+  useEffect(() => {
+    const fetchProperty = async () => {
+      setIsLoading(true);
+      
+      try {
+        // Fetch properties that belong to the specified host
+        const { data, error } = await supabase
+          .from('properties')
+          .select('*')
+          .eq('host_id', hostId)
+          .limit(1);
+          
+        if (error) {
+          throw error;
+        }
+        
+        if (data && data.length > 0) {
+          // Use the first property found for this host
+          const propertyData = data[0];
+          
+          // Transform the data to match our property structure
+          setProperty({
+            id: propertyData.id,
+            name: propertyData.name,
+            description: propertyData.description,
+            location: propertyData.address || "No location specified",
+            rating: propertyData.rating || 4.5,
+            reviews: propertyData.reviews_count || 0,
+            price: propertyData.base_rate,
+            guests: propertyData.max_guests || 2,
+            bedrooms: propertyData.bedrooms || 1,
+            bathrooms: propertyData.bathrooms || 1,
+            images: propertyData.images || [],
+            amenities: propertyData.amenities || [
+              "Wifi", "Kitchen", "Free Parking", "Air Conditioning"
+            ]
+          });
+        } else {
+          setError("No properties found for this host. Please check the host ID or add a property.");
+        }
+      } catch (error) {
+        console.error("Error fetching property:", error);
+        setError("Failed to load property data. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchProperty();
+  }, [hostId]);
 
   // Handle date range changes
   const handleDateRangeChange = (startDate: Date | null, endDate: Date | null) => {
@@ -64,22 +133,54 @@ export default function Home() {
     return date.toISOString().split('T')[0];
   };
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" role="status">
+            <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
+          </div>
+          <p className="mt-2 text-gray-600">Loading property details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500 font-medium mb-2">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
       {/* Property Images */}
       <div className="relative w-full h-[50vh] bg-gray-200">
-        <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-          Property Images Would Appear Here
-          {/* Uncomment when you have actual images
+        {property.images && property.images.length > 0 ? (
           <Image 
             src={property.images[0]} 
             alt={property.name}
             fill
             className="object-cover"
             priority
-          /> 
-          */}
-        </div>
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-gray-500">
+            No Property Images Available
+          </div>
+        )}
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -200,6 +301,7 @@ export default function Home() {
                     href={{
                       pathname: '/booking',
                       query: {
+                        propertyId: property.id,
                         propertyName: property.name,
                         location: property.location,
                         checkIn: formatDateForUrl(checkInDate),

@@ -332,6 +332,21 @@ export default function BookingPage() {
       return;
     }
     
+    // Validate all required fields
+    const requiredFields = ['firstName', 'lastName', 'email', 'phone'];
+    const missingFields = requiredFields.filter(field => !formData[field as keyof typeof formData]);
+    
+    if (missingFields.length > 0) {
+      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+    
+    // Validate booking details
+    if (!bookingDetails.checkIn || !bookingDetails.checkOut || !bookingDetails.guests || !bookingDetails.total) {
+      toast.error("Booking details are incomplete. Please try again.");
+      return;
+    }
+    
     setLoading(true);
 
     // Simulate API call for booking
@@ -347,13 +362,20 @@ export default function BookingPage() {
           checkOut: bookingDetails.checkOut,
           guests: bookingDetails.guests,
           propertyName: bookingDetails.propertyName,
-          totalPrice: bookingDetails.total
+          totalPrice: bookingDetails.total,
+          propertyId: '123e4567-e89b-12d3-a456-426614174000' // Default property ID if none is provided
         }),
       });
 
       const data = await response.json();
       
       if (!response.ok) {
+        console.error('Booking API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: data.error,
+          data
+        });
         throw new Error(data.error || 'Something went wrong');
       }
       
@@ -369,10 +391,10 @@ export default function BookingPage() {
       sessionStorage.setItem('bookingConfirmation', JSON.stringify(data.booking));
       router.push('/booking/confirmation');
       
-    } catch (error: any) {
-      toast.error(error.message || "Something went wrong. Please try again.");
-    } finally {
+    } catch (error) {
       setLoading(false);
+      console.error('Booking submission error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create booking');
     }
   };
 
